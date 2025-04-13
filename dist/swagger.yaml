@@ -1,0 +1,323 @@
+#
+#  swagger.yaml
+#  MlynyHub
+#
+#  Created by Andrej Kazimir on 13/04/2025.
+#
+
+
+
+openapi: 3.0.0
+info:
+  title: MlynyHub API
+  version: 1.0.0
+  description: |
+    Kompletná dokumentácia API pre aplikáciu MlynyHub.
+    Backend je postavený na Firebase Firestore a Cloud Functions.
+    API obsahuje správu používateľov, eventov a registrácie na eventy.
+
+servers:
+  - url: https://us-central1-TVOJ-PROJEKT.cloudfunctions.net
+    description: Firebase Cloud Functions Endpoint
+
+security:
+  - firebaseAuth: []
+
+paths:
+  /auth/register:
+    post:
+      summary: Registrácia nového používateľa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Používateľ úspešne zaregistrovaný
+        '400':
+          description: Chyba v požiadavke
+
+  /auth/login:
+    post:
+      summary: Prihlásenie používateľa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Úspešné prihlásenie, vráti Firebase ID token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  idToken:
+                    type: string
+        '401':
+          description: Neplatné prihlasovacie údaje
+
+  /users/{userId}:
+    get:
+      summary: Získanie profilu používateľa
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profil používateľa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '404':
+          description: Používateľ nenájdený
+
+  /events:
+    get:
+      summary: Získaj všetky eventy
+      responses:
+        '200':
+          description: Zoznam eventov
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+
+    post:
+      summary: Vytvor nový event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewEventRequest'
+      responses:
+        '201':
+          description: Event bol úspešne vytvorený
+        '400':
+          description: Chyba pri vytváraní eventu
+
+  /events/{eventId}:
+    get:
+      summary: Načítaj detail eventu
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detail eventu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetail'
+        '404':
+          description: Event nenájdený
+
+    delete:
+      summary: Vymaž event (len pre admina)
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Event vymazaný
+        '403':
+          description: Neautorizovaný prístup
+        '404':
+          description: Event nenájdený
+
+  /events/{eventId}/join:
+    patch:
+      summary: Pripoj sa na event
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Úspešne pripojený na event
+        '400':
+          description: Chyba pri pripájaní na event
+
+  /events/{eventId}/leave:
+    patch:
+      summary: Odhlás sa z eventu
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Úspešne odhlásený z eventu
+        '400':
+          description: Chyba pri odhlasovaní z eventu
+
+components:
+  securitySchemes:
+    firebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "peter123"
+        name:
+          type: string
+          example: "Peter"
+        surname:
+          type: string
+          example: "Štefanec"
+        email:
+          type: string
+          example: "peter@example.com"
+        password:
+          type: string
+          example: "securePassword123"
+      required:
+        - username
+        - name
+        - surname
+        - email
+        - password
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: "peter@example.com"
+        password:
+          type: string
+          example: "securePassword123"
+      required:
+        - email
+        - password
+
+    UserProfile:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "user_abc123"
+        username:
+          type: string
+          example: "peter123"
+        name:
+          type: string
+          example: "Peter"
+        surname:
+          type: string
+          example: "Štefanec"
+        email:
+          type: string
+          example: "peter@example.com"
+        super_admin:
+          type: boolean
+          example: false
+
+    Event:
+      type: object
+      properties:
+        eventId:
+          type: string
+          example: "event_123"
+        title:
+          type: string
+          example: "Večerný workshop"
+        date:
+          type: string
+          format: date-time
+          example: "2025-05-01T18:00:00Z"
+        location:
+          type: object
+          properties:
+            latitude:
+              type: number
+              example: 48.1486
+            longitude:
+              type: number
+              example: 17.1077
+        imageUrl:
+          type: string
+          example: "https://firebasestorage.googleapis.com/v0/b/project-id.appspot.com/o/event_images%2Fimage.jpg"
+        filledSlots:
+          type: integer
+          example: 10
+        maxSlots:
+          type: integer
+          example: 30
+
+    EventDetail:
+      allOf:
+        - $ref: '#/components/schemas/Event'
+        - type: object
+          properties:
+            description:
+              type: string
+              example: "Podrobný popis eventu."
+            participants:
+              type: array
+              items:
+                type: string
+                example: "user_abc123"
+
+    NewEventRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Nový event"
+        description:
+          type: string
+          example: "Popis eventu"
+        participantSlots:
+          type: integer
+          example: 20
+        date:
+          type: string
+          format: date-time
+          example: "2025-05-01T18:00:00Z"
+        location:
+          type: object
+          properties:
+            latitude:
+              type: number
+              example: 48.1486
+            longitude:
+              type: number
+              example: 17.1077
+        imageUrl:
+          type: string
+          example: "https://firebasestorage.googleapis.com/v0/b/project-id.appspot.com/o/event_images%2Fimage.jpg"
+      required:
+        - title
+        - description
+        - participantSlots
+        - date
+        - location
+        - imageUrl
